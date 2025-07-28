@@ -1,0 +1,137 @@
+import tkinter as tk
+from tkinter import messagebox, ttk
+import json
+import os
+
+# --- Inventory Management System ---
+# This system implements:
+# - User authentication
+# - Data validation
+# - Graphical User Interface (GUI) for better usability
+# - Inventory operations: Add, Edit, Delete
+# - Reports: Low stock alert
+
+# --- Authentication ---
+USERS = {"admin": "admin123"}  # simple user store
+
+# --- Inventory Data File ---
+DATA_FILE = "inventory_data.json"
+
+# Load or initialize inventory
+if os.path.exists(DATA_FILE):
+    with open(DATA_FILE, 'r') as file:
+        inventory = json.load(file)
+else:
+    inventory = {}
+
+# --- Functions ---
+def save_inventory():
+    with open(DATA_FILE, 'w') as file:
+        json.dump(inventory, file, indent=4)
+
+def validate_input(name, quantity):
+    if not name or not quantity.isdigit():
+        return False
+    return True
+
+def add_product():
+    name = entry_name.get()
+    quantity = entry_quantity.get()
+    if validate_input(name, quantity):
+        inventory[name] = inventory.get(name, 0) + int(quantity)
+        save_inventory()
+        refresh_inventory()
+    else:
+        messagebox.showerror("Input Error", "Invalid product name or quantity")
+
+def edit_product():
+    name = entry_name.get()
+    quantity = entry_quantity.get()
+    if name in inventory and validate_input(name, quantity):
+        inventory[name] = int(quantity)
+        save_inventory()
+        refresh_inventory()
+    else:
+        messagebox.showerror("Error", "Product not found or invalid quantity")
+
+def delete_product():
+    name = entry_name.get()
+    if name in inventory:
+        del inventory[name]
+        save_inventory()
+        refresh_inventory()
+    else:
+        messagebox.showerror("Error", "Product not found")
+
+def refresh_inventory():
+    for item in tree.get_children():
+        tree.delete(item)
+    for name, quantity in inventory.items():
+        tree.insert('', 'end', values=(name, quantity))
+
+def low_stock_report():
+    threshold = 5
+    low_stock = [f"{name}: {qty}" for name, qty in inventory.items() if qty <= threshold]
+    message = "\n".join(low_stock) or "No low stock items"
+    messagebox.showinfo("Low Stock Report", message)
+
+def login():
+    username = entry_user.get().strip()
+    password = entry_pass.get().strip()
+
+    if not username or not password:
+        messagebox.showwarning("Input Error", "Username and password cannot be empty.")
+        return
+
+    if USERS.get(username) == password:
+        login_frame.pack_forget()
+        main_frame.pack(fill='both', expand=True)
+        root.title(f"Inventory System - Logged in as {username}")
+        refresh_inventory()
+    else:
+        messagebox.showerror("Login Failed", "Invalid username or password.")
+
+# --- GUI Setup ---
+root = tk.Tk()
+root.title("Inventory Management System")
+root.geometry("600x400")
+
+# --- Login Frame ---
+login_frame = tk.Frame(root)
+login_frame.pack()
+
+tk.Label(login_frame, text="Username:").grid(row=0, column=0)
+entry_user = tk.Entry(login_frame)
+entry_user.grid(row=0, column=1)
+
+tk.Label(login_frame, text="Password:").grid(row=1, column=0)
+entry_pass = tk.Entry(login_frame, show='*')
+entry_pass.grid(row=1, column=1)
+
+btn_login = tk.Button(login_frame, text="Login", command=login)
+btn_login.grid(row=2, column=0, columnspan=2)
+
+# --- Main Frame ---
+main_frame = tk.Frame(root)
+
+tk.Label(main_frame, text="Product Name:").grid(row=0, column=0)
+entry_name = tk.Entry(main_frame)
+entry_name.grid(row=0, column=1)
+
+tk.Label(main_frame, text="Quantity:").grid(row=1, column=0)
+entry_quantity = tk.Entry(main_frame)
+entry_quantity.grid(row=1, column=1)
+
+tk.Button(main_frame, text="Add", command=add_product).grid(row=2, column=0)
+tk.Button(main_frame, text="Edit", command=edit_product).grid(row=2, column=1)
+tk.Button(main_frame, text="Delete", command=delete_product).grid(row=2, column=2)
+tk.Button(main_frame, text="Low Stock Report", command=low_stock_report).grid(row=2, column=3)
+
+# Inventory Table
+tree = ttk.Treeview(main_frame, columns=("Name", "Quantity"), show='headings')
+tree.heading("Name", text="Product Name")
+tree.heading("Quantity", text="Quantity")
+tree.grid(row=3, column=0, columnspan=4, pady=10)
+
+root.mainloop()
+
